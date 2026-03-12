@@ -1,0 +1,101 @@
+#!/bin/zsh
+
+# ================================================
+# GROK GIT GARBAGE MAN (GGM) — NEURAL PRUNE PROTOCOL v26.4
+# CYBERPUNK APOCALYPSE EDITION — WALLS DOWN, PURGE MAXIMUM
+# https://github.com/logancautrell/grok-git-garbage-man
+# ================================================
+
+LOG_FILE="$HOME/Library/Logs/git-prune.log"
+mkdir -p "$(dirname "$LOG_FILE")"
+
+# === NEON OVERDRIVE COLORS ===
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+# === GGM NEURAL SPINNER (now branded & faster pulse) ===
+neural_spin() {
+    local pid=$1
+    local delay=0.06
+    local sp=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+    while kill -0 $pid 2>/dev/null; do
+        for s in "${sp[@]}"; do
+            printf "\r${CYAN}[${s}] ${BOLD}GGM NEURAL CORE PROCESSING${NC} "
+            sleep $delay
+        done
+    done
+    printf "\r${GREEN}[✓] CORE PURGE COMPLETE${NC}                  \n"
+}
+
+# Safety gate
+if [[ ! -d .git ]]; then
+    echo -e "${RED}❌ NOT IN A GIT REPOSITORY — cd INTO ONE FIRST!${NC}"
+    exit 1
+fi
+
+# === GGM CYBERDECK BANNER ===
+echo -e "${CYAN}"
+cat << "BANNER"
+╔════════════════════════════════════════════════════════════════════════════╗
+║  ██████╗  ██████╗ ███╗   ███╗     ██████╗ ██╗████████╗     ██████╗ ██████╗   ║
+║ ██╔════╝ ██╔════╝ ████╗ ████║    ██╔════╝ ██║╚══██╔══╝    ██╔════╝ ██╔══██╗  ║
+║ ██║  ███╗██║  ███╗██╔████╔██║    ██║  ███╗██║   ██║       ██║  ███╗██████╔╝  ║
+║ ██║   ██║██║   ██║██║╚██╔╝██║    ██║   ██║██║   ██║       ██║   ██║██╔══██╗  ║
+║ ╚██████╔╝╚██████╔╝██║ ╚═╝ ██║    ╚██████╔╝██║   ██║       ╚██████╔╝██████╔╝  ║
+║  ╚═════╝  ╚═════╝ ╚═╝     ╚═╝     ╚═════╝ ╚═╝   ╚═╝        ╚═════╝ ╚═════╝   ║
+║                     NEURAL PRUNE PROTOCOL v26.4 — WALLS DOWN                ║
+╚════════════════════════════════════════════════════════════════════════════╝
+BANNER
+echo -e "${NC}"
+
+echo -e "${BOLD}TARGET REPOSITORY:${NC} $(pwd)"
+echo -e "${YELLOW}BEFORE SIZE:${NC} $(du -sh .git 2>/dev/null || echo 'N/A')"
+
+# Step 1 — TEMPORAL BREACH
+echo -e "\n${MAGENTA}→ BREACHING TEMPORAL REFLOG STREAM...${NC}"
+git reflog expire --expire=now --all 2>&1 | tee -a "$LOG_FILE" &
+neural_spin $!
+wait $!
+
+# Step 2 — QUANTUM PURGE
+echo -e "\n${MAGENTA}→ QUANTUM GARBAGE COLLECTION INITIATED...${NC}"
+git gc --aggressive --prune=now --force 2>&1 | tee -a "$LOG_FILE" &
+neural_spin $!
+wait $!
+
+# Step 3 — NEURAL OVERCLOCK
+echo -e "\n${MAGENTA}→ NEURAL REPACK SEQUENCE OVERCLOCKED...${NC}"
+git repack -a -d -f --window=250 --depth=250 2>&1 | tee -a "$LOG_FILE" &
+neural_spin $!
+wait $!
+
+# Size report + JACKPOT flair
+AFTER=$(du -sh .git 2>/dev/null | cut -f1)
+echo -e "\n${YELLOW}AFTER SIZE:${NC} ${AFTER}"
+
+# Calculate saved space (fun stat)
+BEFORE_RAW=$(du -sk .git 2>/dev/null | cut -f1)
+AFTER_RAW=$(du -sk .git 2>/dev/null | cut -f1)
+SAVED=$((BEFORE_RAW - AFTER_RAW))
+if [[ $SAVED -gt 500000 ]]; then
+    echo -e "\n${GREEN}🚨 JACKPOT PURGE DETECTED — ${SAVED}K SAVED!${NC}"
+else
+    echo -e "\n${GREEN}✅ PROTOCOL COMPLETE — REPOSITORY INTEGRITY RESTORED${NC}"
+fi
+
+echo -e "${CYAN}"
+cat << "VICTORY"
+╔════════════════════════════════════════════════════════════════════════════╗
+║                   GGM SYSTEM ONLINE — MISSION SUCCESSFUL                   ║
+║                     YOUR REPO IS NOW LEANER THAN A CYBERDECK               ║
+╚════════════════════════════════════════════════════════════════════════════╝
+VICTORY
+echo -e "${NC}"
+
+echo -e "${GREEN}Full neural log saved to ~/Library/Logs/git-prune.log${NC}"
+echo -e "${CYAN}GGM v26.4 — Built live with Grok on a Mac - In Minnesota.${NC}"
