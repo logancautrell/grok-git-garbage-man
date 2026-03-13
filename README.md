@@ -20,5 +20,8 @@ cd /path/to/your/repo
 30 3 1 * * cd /your/repo/path && ~/bin/ggm
 ```
 
+![Example](https://github.com/user-attachments/assets/98186d1d-f643-43c1-8a38-a04f6c744143)
+
+
 Made with ❤️ in Minnesota by Logan + Grok 4.20 beta.
 Star it if it saves you space. Issues & PRs welcome!
