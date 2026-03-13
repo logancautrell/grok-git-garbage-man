@@ -12,7 +12,7 @@ mkdir -p ~/bin && curl -fsSL https://raw.githubusercontent.com/logancautrell/gro
 ### Usage
 ```bash
 cd /path/to/your/repo
-ggm
+~/bin/ggm
 ```
 
 ### Cron example (monthly cleanup)
