@@ -20,6 +20,8 @@ cd /path/to/your/repo
 30 3 1 * * cd /your/repo/path && ~/bin/ggm
 ```
 
+### In Action
+
 ![Example](https://github.com/user-attachments/assets/98186d1d-f643-43c1-8a38-a04f6c744143)
 
 
