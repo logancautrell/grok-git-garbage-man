@@ -1,13 +1,10 @@
-#!/bin/zsh
+#!/bin/sh
 
 # ================================================
 # GROK GIT GARBAGE MAN (GGM) — NEURAL PRUNE PROTOCOL v26.4
 # CYBERPUNK APOCALYPSE EDITION — WALLS DOWN, PURGE MAXIMUM
 # https://github.com/logancautrell/grok-git-garbage-man
 # ================================================
-
-LOG_FILE="$HOME/Library/Logs/git-prune.log"
-mkdir -p "$(dirname "$LOG_FILE")"
 
 # === NEON OVERDRIVE COLORS ===
 RED='\033[0;31m'
@@ -18,28 +15,66 @@ MAGENTA='\033[0;35m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-# === GGM NEURAL SPINNER (now branded & faster pulse) ===
+DRY_RUN=0
+STATUS_ONLY=0
+
+# Parse flags
+for _arg in "$@"; do
+    case "$_arg" in
+        --dry-run) DRY_RUN=1 ;;
+        --status)  STATUS_ONLY=1 ;;
+        --help|-h)
+            printf "${CYAN}GGM — Grok Git Garbage Man v26.4${NC}\n"
+            printf "Usage: ggm [--dry-run] [--status] [--help]\n"
+            printf "\n  --dry-run   Simulate the purge without making any changes\n"
+            printf "  --status    Show .git bloat info without pruning\n"
+            printf "  --help      Show this help message\n"
+            exit 0
+            ;;
+        *)
+            printf "${RED}❌ Unknown option: %s — try --help${NC}\n" "$_arg" >&2
+            exit 1
+            ;;
+    esac
+done
+
+# Log file: prefer macOS location, fall back to /tmp on other systems
+LOG_FILE="$HOME/Library/Logs/git-prune.log"
+mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || LOG_FILE="/tmp/git-prune.log"
+
+# Error handling: exit on unhandled errors, show a helpful warning
+set -e
+_ggm_ok=0
+trap '[ "$_ggm_ok" -eq 1 ] || printf "\n${RED}⚡ GGM ENCOUNTERED AN ERROR — check log: %s${NC}\n" "$LOG_FILE" >&2' EXIT
+
+# Graceful non-fatal warning
+warn() {
+    printf "${YELLOW}⚠  WARNING: %s${NC}\n" "$*" >&2
+}
+
+# === GGM NEURAL SPINNER (branded & faster pulse) ===
 neural_spin() {
-    local pid=$1
-    local delay=0.06
-    local sp=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
-    while kill -0 $pid 2>/dev/null; do
-        for s in "${sp[@]}"; do
-            printf "\r${CYAN}[${s}] ${BOLD}GGM NEURAL CORE PROCESSING${NC} "
-            sleep $delay
+    _spin_pid=$1
+    _spin_delay=0.06
+    set -- '⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏'
+    while kill -0 "$_spin_pid" 2>/dev/null; do
+        for _s in "$@"; do
+            printf "\r${CYAN}[%s] ${BOLD}GGM NEURAL CORE PROCESSING${NC} " "$_s"
+            sleep "$_spin_delay" 2>/dev/null || sleep 0
         done
     done
     printf "\r${GREEN}[✓] CORE PURGE COMPLETE${NC}                  \n"
 }
 
 # Safety gate
-if [[ ! -d .git ]]; then
-    echo -e "${RED}❌ NOT IN A GIT REPOSITORY — cd INTO ONE FIRST!${NC}"
+if [ ! -d .git ]; then
+    printf "${RED}❌ NOT IN A GIT REPOSITORY — cd INTO ONE FIRST!${NC}\n"
+    _ggm_ok=1
     exit 1
 fi
 
 # === GGM CYBERDECK BANNER ===
-echo -e "${CYAN}"
+printf "${CYAN}"
 cat << "BANNER"
 ╔════════════════════════════════════════════════════════════════════════════╗
 ║  ██████╗  ██████╗ ███╗   ███╗     ██████╗ ██╗████████╗     ██████╗ ██████╗   ║
@@ -51,51 +86,88 @@ cat << "BANNER"
 ║                     NEURAL PRUNE PROTOCOL v26.4 — WALLS DOWN                ║
 ╚════════════════════════════════════════════════════════════════════════════╝
 BANNER
-echo -e "${NC}"
+printf "${NC}\n"
 
-echo -e "${BOLD}TARGET REPOSITORY:${NC} $(pwd)"
-echo -e "${YELLOW}BEFORE SIZE:${NC} $(du -sh .git 2>/dev/null || echo 'N/A')"
+printf "${BOLD}TARGET REPOSITORY:${NC} $(pwd)\n"
+printf "${YELLOW}BEFORE SIZE:${NC} $(du -sh .git 2>/dev/null | cut -f1 || printf 'N/A')\n"
 
-# Step 1 — TEMPORAL BREACH
-echo -e "\n${MAGENTA}→ BREACHING TEMPORAL REFLOG STREAM...${NC}"
-git reflog expire --expire=now --all 2>&1 | tee -a "$LOG_FILE" &
-neural_spin $!
-wait $!
-
-# Step 2 — QUANTUM PURGE
-echo -e "\n${MAGENTA}→ QUANTUM GARBAGE COLLECTION INITIATED...${NC}"
-git gc --aggressive --prune=now --force 2>&1 | tee -a "$LOG_FILE" &
-neural_spin $!
-wait $!
-
-# Step 3 — NEURAL OVERCLOCK
-echo -e "\n${MAGENTA}→ NEURAL REPACK SEQUENCE OVERCLOCKED...${NC}"
-git repack -a -d -f --window=250 --depth=250 2>&1 | tee -a "$LOG_FILE" &
-neural_spin $!
-wait $!
-
-# Size report + JACKPOT flair
-AFTER=$(du -sh .git 2>/dev/null | cut -f1)
-echo -e "\n${YELLOW}AFTER SIZE:${NC} ${AFTER}"
-
-# Calculate saved space (fun stat)
-BEFORE_RAW=$(du -sk .git 2>/dev/null | cut -f1)
-AFTER_RAW=$(du -sk .git 2>/dev/null | cut -f1)
-SAVED=$((BEFORE_RAW - AFTER_RAW))
-if [[ $SAVED -gt 500000 ]]; then
-    echo -e "\n${GREEN}🚨 JACKPOT PURGE DETECTED — ${SAVED}K SAVED!${NC}"
-else
-    echo -e "\n${GREEN}✅ PROTOCOL COMPLETE — REPOSITORY INTEGRITY RESTORED${NC}"
+# ================================================
+# STATUS-ONLY MODE
+# ================================================
+if [ "$STATUS_ONLY" -eq 1 ]; then
+    printf "\n${CYAN}⟦ GGM STATUS SCAN — NEURAL DIAGNOSTIC MODE ⟧${NC}\n"
+    printf "\n${MAGENTA}→ .git DIRECTORY BREAKDOWN:${NC}\n"
+    du -sh .git/* 2>/dev/null | sort -r 2>/dev/null || warn "Could not read .git contents"
+    printf "\n${MAGENTA}→ OBJECT DATABASE INTEL:${NC}\n"
+    git count-objects -vH 2>/dev/null || warn "Could not count objects"
+    printf "\n${MAGENTA}→ REFLOG ENTRIES DETECTED:${NC} "
+    git reflog --oneline 2>/dev/null | wc -l | xargs
+    printf "\n${MAGENTA}→ PACK FILES:${NC}\n"
+    ls -lh .git/objects/pack/*.pack 2>/dev/null || printf "  (none)\n"
+    printf "\n${GREEN}✅ STATUS SCAN COMPLETE — RUN WITHOUT --status TO PRUNE${NC}\n"
+    _ggm_ok=1
+    exit 0
 fi
 
-echo -e "${CYAN}"
+# ================================================
+# DRY-RUN NOTICE
+# ================================================
+if [ "$DRY_RUN" -eq 1 ]; then
+    printf "\n${YELLOW}⟦ DRY-RUN MODE — SIMULATING PURGE, NO CHANGES WILL BE MADE ⟧${NC}\n"
+fi
+
+# Helper: run a git command for real or just print it in dry-run mode
+run_cmd() {
+    if [ "$DRY_RUN" -eq 1 ]; then
+        printf "${YELLOW}[DRY-RUN]${NC} Would run: %s\n" "$*"
+    else
+        "$@" 2>&1 | tee -a "$LOG_FILE" &
+        neural_spin $!
+        wait $!
+    fi
+}
+
+# Capture size before operations for accurate savings calculation
+BEFORE_RAW=$(du -sk .git 2>/dev/null | cut -f1 || printf '0')
+
+# Step 1 — TEMPORAL BREACH
+printf "\n${MAGENTA}→ BREACHING TEMPORAL REFLOG STREAM...${NC}\n"
+run_cmd git reflog expire --expire=now --all
+
+# Step 2 — QUANTUM PURGE
+printf "\n${MAGENTA}→ QUANTUM GARBAGE COLLECTION INITIATED...${NC}\n"
+run_cmd git gc --aggressive --prune=now --force
+
+# Step 3 — NEURAL OVERCLOCK
+printf "\n${MAGENTA}→ NEURAL REPACK SEQUENCE OVERCLOCKED...${NC}\n"
+run_cmd git repack -a -d -f --window=250 --depth=250
+
+# Size report + JACKPOT flair
+AFTER=$(du -sh .git 2>/dev/null | cut -f1 || printf 'N/A')
+printf "\n${YELLOW}AFTER SIZE:${NC} ${AFTER}\n"
+
+if [ "$DRY_RUN" -eq 1 ]; then
+    printf "\n${YELLOW}[DRY-RUN] Simulation complete — no data was modified${NC}\n"
+else
+    AFTER_RAW=$(du -sk .git 2>/dev/null | cut -f1 || printf '0')
+    SAVED=$((BEFORE_RAW - AFTER_RAW))
+    if [ "$SAVED" -gt 500000 ]; then
+        printf "\n${GREEN}🚨 JACKPOT PURGE DETECTED — ${SAVED}K SAVED!${NC}\n"
+    else
+        printf "\n${GREEN}✅ PROTOCOL COMPLETE — REPOSITORY INTEGRITY RESTORED${NC}\n"
+    fi
+fi
+
+printf "${CYAN}"
 cat << "VICTORY"
 ╔════════════════════════════════════════════════════════════════════════════╗
 ║                   GGM SYSTEM ONLINE — MISSION SUCCESSFUL                   ║
 ║                     YOUR REPO IS NOW LEANER THAN A CYBERDECK               ║
 ╚════════════════════════════════════════════════════════════════════════════╝
 VICTORY
-echo -e "${NC}"
+printf "${NC}\n"
 
-echo -e "${GREEN}Full neural log saved to ~/Library/Logs/git-prune.log${NC}"
-echo -e "${CYAN}GGM v26.4 — Built live with Grok on a Mac - In Minnesota.${NC}"
+printf "${GREEN}Full neural log saved to %s${NC}\n" "$LOG_FILE"
+printf "${CYAN}GGM v26.4 — Built live with Grok on a Mac - In Minnesota.${NC}\n"
+
+_ggm_ok=1
