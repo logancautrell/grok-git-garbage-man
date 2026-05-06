@@ -12,7 +12,10 @@ mkdir -p ~/bin && curl -fsSL https://raw.githubusercontent.com/logancautrell/gro
 ### Usage
 ```bash
 cd /path/to/your/repo
-~/bin/ggm
+~/bin/ggm              # full purge
+~/bin/ggm --dry-run    # simulate without making any changes
+~/bin/ggm --status     # show .git bloat info without pruning
+~/bin/ggm --help       # show usage
 ```
 
 ### Cron example (monthly cleanup)
